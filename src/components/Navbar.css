@@ -1,0 +1,16 @@
+.menu-btn {
+  background: #003366;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  font-size: 22px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.navbar-title {
+  margin-left: 20px;
+  font-size: 22px;
+  font-weight: bold;
+  color: #003366;
+}

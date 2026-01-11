@@ -1,0 +1,36 @@
+/* ---------- App.css (clean base styles) ---------- */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.App {
+  height: 100%;
+  width: 100%;
+  font-family: Inter, Segoe UI, sans-serif;
+  background-color: #f7f9fc; /* light corporate bg */
+  color: #1f2937;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+}
+
+input, select {
+  font-family: inherit;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+:focus {
+  outline: none;
+}
