@@ -17,7 +17,9 @@ import  HistoryPage from "./pages/HistoryPage";
 import AdminDashboard1 from "./pages/AdminDashboard1";
 import AdminDashboard2 from "./pages/AdminDashboard2";
 import AdminDashboard3 from "./pages/AdminDashboard3";
-
+import MedicalInventory from "./pages/MedicalInventory";
+import Feedback from "./pages/Feedback";
+import QCFeedback from "./pages/QCFeedback";
 
 function Layout() {
   const location = useLocation();
@@ -39,7 +41,7 @@ function Layout() {
         <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
       )}
 
-      <div className="page-content">
+      <div style={{ padding: "40px" }}>
         <Routes>
           <Route path="/temperature" element={<TemperatureHeatmap />} />  
           <Route path="/" element={<Login />} />
@@ -50,6 +52,9 @@ function Layout() {
           <Route path="/admin-dashboard1" element={<AdminDashboard1 />} />
           <Route path="/admin-dashboard2" element={<AdminDashboard2 />} />
           <Route path="/admin-dashboard3" element={<AdminDashboard3 />} />
+          <Route path="/inventory" element={<MedicalInventory />} />
+          <Route path="/feedback" element={<Feedback />} />
+          <Route path="/qc-feedback" element={<QCFeedback />} />
         </Routes>
       </div>
     </>

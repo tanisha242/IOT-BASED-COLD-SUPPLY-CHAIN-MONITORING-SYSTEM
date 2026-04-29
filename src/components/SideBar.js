@@ -32,6 +32,12 @@ export default function Sidebar({ open, setOpen }) {
               <li onClick={() => goto(`/admin-dashboard${userId.slice(-1)}`)}>
                 📦 Admin Dashboard
               </li>
+              <li onClick={() => goto("/inventory")}>
+                💊 Medical Inventory
+              </li>
+              <li onClick={() => goto("/feedback")}>
+                📝 Feedback
+              </li>
               <li onClick={() => goto("/")}>🚪 Logout</li>
             </>
           ) : (
@@ -39,6 +45,9 @@ export default function Sidebar({ open, setOpen }) {
               <li onClick={() => goto("/dashboard")}>📊 Dashboard</li>
               <li onClick={() => goto("/temperature")}>🌡 Temperature</li>
               <li onClick={() => goto("/history")}>📜 History</li>
+              <li onClick={() => goto("/qc-feedback")}>
+                💬 User Feedback
+              </li>
               <li onClick={() => goto("/")}>🚪 Logout</li>
             </>
           )}

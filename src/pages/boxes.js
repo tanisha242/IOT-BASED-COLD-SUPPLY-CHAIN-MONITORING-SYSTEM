@@ -23,4 +23,11 @@ export const BOXES = [
   { deviceId: "BOX-VJA-18", name: "Vijayawada Refrigeration", demo: true, assignedTo: "admin3" },
   { deviceId: "BOX-BBS-19", name: "Bhubaneswar Cold Supply", demo: true, assignedTo: "admin3" },
   { deviceId: "BOX-TRV-20", name: "Trivandrum Medical Fridge", demo: true, assignedTo: "admin3" },
+
+  { deviceId: "BOX-GHY-16", name: "Guwahati Bio Transport", demo: true, assignedTo: "admin1" },
+  { deviceId: "BOX-CBE-17", name: "Coimbatore Freeze Unit", demo: true, assignedTo: "admin1" },
+  { deviceId: "BOX-VJA-18", name: "Vijayawada Refrigeration", demo: true, assignedTo: "admin1" },
+  { deviceId: "BOX-BBS-19", name: "Bhubaneswar Cold Supply", demo: true, assignedTo: "admin1" },
+  { deviceId: "BOX-TRV-20", name: "Trivandrum Medical Fridge", demo: true, assignedTo: "admin1" },
 ];
+
