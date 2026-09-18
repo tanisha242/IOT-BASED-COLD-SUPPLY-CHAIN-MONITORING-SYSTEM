@@ -13,13 +13,15 @@ import "./styles/style.css";
 import "./components/Sidebar.css";
 import "./App.css";
 import TemperatureHeatmap from "./pages/TemperatureHeatmap";
-import  HistoryPage from "./pages/HistoryPage";
+import HistoryPage from "./pages/HistoryPage";
 import AdminDashboard1 from "./pages/AdminDashboard1";
 import AdminDashboard2 from "./pages/AdminDashboard2";
 import AdminDashboard3 from "./pages/AdminDashboard3";
 import MedicalInventory from "./pages/MedicalInventory";
 import Feedback from "./pages/Feedback";
 import QCFeedback from "./pages/QCFeedback";
+import Maintenance from "./pages/Maintenance";
+
 
 function Layout() {
   const location = useLocation();
@@ -43,7 +45,7 @@ function Layout() {
 
       <div style={{ padding: "40px" }}>
         <Routes>
-          <Route path="/temperature" element={<TemperatureHeatmap />} />  
+          <Route path="/temperature" element={<TemperatureHeatmap />} />
           <Route path="/" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/dashboard" element={<Dashboard />} />
@@ -55,6 +57,7 @@ function Layout() {
           <Route path="/inventory" element={<MedicalInventory />} />
           <Route path="/feedback" element={<Feedback />} />
           <Route path="/qc-feedback" element={<QCFeedback />} />
+          <Route path="/maintenance" element={<Maintenance />} />
         </Routes>
       </div>
     </>

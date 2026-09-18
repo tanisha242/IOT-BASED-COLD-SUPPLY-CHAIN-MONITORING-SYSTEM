@@ -1,0 +1,27 @@
+[
+  {
+    "deviceId": "BOX-DEL-02",
+    "predictedTemp": 8.0,
+    "risk": false
+  },
+  {
+    "deviceId": "BOX-MUM-03",
+    "predictedTemp": 2.0,
+    "risk": false
+  },
+  {
+    "deviceId": "BOX-BLR-04",
+    "predictedTemp": 2.0,
+    "risk": false
+  },
+  {
+    "deviceId": "BOX-HYD-05",
+    "predictedTemp": 8.0,
+    "risk": false
+  },
+  {
+    "deviceId": "BOX-PUNE-06",
+    "predictedTemp": 2.0,
+    "risk": false
+  }
+]

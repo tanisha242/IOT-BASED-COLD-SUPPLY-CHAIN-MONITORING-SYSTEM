@@ -73,6 +73,7 @@
 /* Shipment / route card */
 .shipment-card {
   margin-top: 6px;
+  margin-bottom: 20px;
   background: #fff;
   border-radius: 12px;
   padding: 14px;
@@ -198,4 +199,44 @@
     grid-template-columns: 1fr;
   }
   .box-details-page { padding: 16px; }
+}
+
+/* Medicines section */
+.medicine-row {
+  padding: 6px 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 14px;
+}
+
+.medicine-row:last-child {
+  border-bottom: none;
+}
+
+.medicine-safe {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.medicine-unsafe {
+  color: #d93025;
+  font-weight: 700;
+}
+.medicines-card {
+  margin-bottom: 20px;
+}
+/* AI prediction row */
+.prediction-row {
+  margin: 6px 0;
+  font-size: 15px;
+  color: #374151;
+}
+/* AI prediction row */
+.prediction-row {
+  margin: 6px 0;
+  font-size: 15px;
+  color: #374151;
+}
+
+.leaflet-routing-container {
+  display: none !important;
 }

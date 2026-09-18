@@ -18,38 +18,56 @@ export default function Sidebar({ open, setOpen }) {
     <>
       {/* Sidebar panel */}
       <aside
-        className={`sidebar-panel ${open ? "open" : ""} ${
-          userRole === "admin" ? "admin-sidebar" : ""
-        }`}
+        className={`sidebar-panel ${open ? "open" : ""} ${userRole === "admin" ? "admin-sidebar" : ""
+          }`}
       >
         {/* Hide 'Menu' for admin */}
         {userRole !== "admin" && <h3 className="sidebar-title">Menu</h3>}
 
-        <ul className="sidebar-menu">
+          <ul className="sidebar-menu">
           {userRole === "admin" ? (
-            <>
-              {/* Open respective admin dashboard */}
-              <li onClick={() => goto(`/admin-dashboard${userId.slice(-1)}`)}>
-                📦 Admin Dashboard
-              </li>
-              <li onClick={() => goto("/inventory")}>
-                💊 Medical Inventory
-              </li>
-              <li onClick={() => goto("/feedback")}>
-                📝 Feedback
-              </li>
-              <li onClick={() => goto("/")}>🚪 Logout</li>
-            </>
-          ) : (
-            <>
-              <li onClick={() => goto("/dashboard")}>📊 Dashboard</li>
-              <li onClick={() => goto("/temperature")}>🌡 Temperature</li>
-              <li onClick={() => goto("/history")}>📜 History</li>
-              <li onClick={() => goto("/qc-feedback")}>
-                💬 User Feedback
-              </li>
-              <li onClick={() => goto("/")}>🚪 Logout</li>
-            </>
+           <>
+          {/* Open respective admin dashboard */}
+            <li onClick={() => goto(`/admin-dashboard${userId.slice(-1)}`)}>
+            📦 Admin Dashboard
+            </li>
+
+          {/* Maintenance */}
+            <li onClick={() => goto("/maintenance")}>
+            🔧 Maintenance
+            </li>
+
+          <li onClick={() => goto("/inventory")}>
+            💊 Medical Inventory
+          </li>
+
+          <li onClick={() => goto("/feedback")}>
+            📝 Feedback
+          </li>
+
+          <li onClick={() => goto("/")}>🚪 Logout</li>
+         </>
+          )
+            : (
+           <>
+          <li onClick={() => goto("/dashboard")}>📊 Dashboard</li>
+
+          <li onClick={() => goto("/temperature")}>🌡 Temperature</li>
+
+          <li onClick={() => goto("/history")}>📜 History</li>
+
+          <li onClick={() => goto("/qc-feedback")}>
+          💬 User Feedback
+          </li>
+
+  <li onClick={() => goto("/maintenance")}>
+    🔧 Maintenance
+  </li>
+
+  <li onClick={() => goto("/")}>
+    🚪 Logout
+  </li>
+</>
           )}
         </ul>
       </aside>

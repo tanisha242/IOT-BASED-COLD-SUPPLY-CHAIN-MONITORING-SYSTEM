@@ -8,6 +8,8 @@ const sensorSchema = new mongoose.Schema(
     temperature: Number,
     humidity: Number,
     alert: { type: Boolean, default: false },
+    latitude: Number,
+    longitude: Number,
   },
   { timestamps: true } // adds createdAt, updatedAt
 );
