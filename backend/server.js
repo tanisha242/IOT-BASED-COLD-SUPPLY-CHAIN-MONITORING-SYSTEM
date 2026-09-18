@@ -2,6 +2,23 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
+let geminiClient = null;
+
+async function getGeminiClient() {
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY is not configured");
+  }
+
+  if (!geminiClient) {
+    const { GoogleGenAI } = await import("@google/genai");
+
+    geminiClient = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY
+    });
+  }
+
+  return geminiClient;
+}
 const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
@@ -59,6 +76,408 @@ const MedicineSchema = new mongoose.Schema({
 
 const Medicine = mongoose.model("Medicine", MedicineSchema, "medicines");
 
+
+// ===================================
+// AI Assistant - Data Context Builder
+// ===================================
+
+const LIVE_DEVICE_ID = process.env.LIVE_DEVICE_ID || "";
+
+function getDataSource(deviceId) {
+  if (
+    LIVE_DEVICE_ID &&
+    deviceId === LIVE_DEVICE_ID
+  ) {
+    return "LIVE HARDWARE DATA";
+  }
+
+  return "DEMONSTRATION DATA";
+}
+
+
+// -----------------------------------
+// Get latest sensor data
+// -----------------------------------
+
+async function getAssistantSensorData(message) {
+  const lowerMessage = message.toLowerCase();
+
+  const deviceMatch = message.match(
+    /BOX-[A-Z]+-\d+/i
+  );
+
+  const requestedDeviceId = deviceMatch
+    ? deviceMatch[0].toUpperCase()
+    : null;
+
+
+  // ---------------------------------
+  // If user asks about a specific box
+  // ---------------------------------
+
+  if (requestedDeviceId) {
+    const sensor = await SensorData
+      .findOne({
+        deviceId: requestedDeviceId
+      })
+      .sort({
+        createdAt: -1
+      })
+      .lean();
+
+    if (!sensor) {
+      return {
+        type: "sensor",
+        data: `No sensor data found for ${requestedDeviceId}.`
+      };
+    }
+
+    return {
+      type: "sensor",
+      data: {
+        deviceId: sensor.deviceId,
+        boxName: sensor.boxName,
+        location: sensor.location,
+        temperature: sensor.temperature,
+        humidity: sensor.humidity,
+        alert: sensor.alert,
+        majorChange: sensor.majorChange,
+        latitude: sensor.latitude,
+        longitude: sensor.longitude,
+        createdAt: sensor.createdAt,
+        dataSource: getDataSource(sensor.deviceId)
+      }
+    };
+  }
+
+
+  // ---------------------------------
+  // Questions about temperature,
+  // humidity, sensor, boxes, readings
+  // ---------------------------------
+
+  const sensorKeywords = [
+    "temperature",
+    "temp",
+    "humidity",
+    "sensor",
+    "reading",
+    "readings",
+    "box",
+    "boxes",
+    "cold storage",
+    "current status",
+    "status"
+  ];
+
+  const asksAboutSensor = sensorKeywords.some(
+    keyword => lowerMessage.includes(keyword)
+  );
+
+  if (!asksAboutSensor) {
+    return null;
+  }
+
+
+  // ---------------------------------
+  // Get latest reading for every device
+  // ---------------------------------
+
+  const devices = await SensorData.distinct(
+    "deviceId"
+  );
+
+  const readings = [];
+
+  for (const deviceId of devices) {
+    const sensor = await SensorData
+      .findOne({ deviceId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    if (sensor) {
+      readings.push({
+        deviceId: sensor.deviceId,
+        boxName: sensor.boxName,
+        location: sensor.location,
+        temperature: sensor.temperature,
+        humidity: sensor.humidity,
+        alert: sensor.alert,
+        majorChange: sensor.majorChange,
+        createdAt: sensor.createdAt,
+        dataSource: getDataSource(sensor.deviceId)
+      });
+    }
+  }
+
+  return {
+    type: "sensor",
+    data: readings
+  };
+}
+
+
+// -----------------------------------
+// Get box information
+// -----------------------------------
+
+async function getAssistantBoxData() {
+  const boxes = await Box
+    .find()
+    .lean();
+
+  return boxes.map(box => ({
+    deviceId: box.deviceId,
+    boxName: box.boxName,
+    location: box.location,
+    medicines: box.medicines,
+    dataSource: getDataSource(box.deviceId)
+  }));
+}
+
+
+// -----------------------------------
+// Get medicine information
+// -----------------------------------
+
+async function getAssistantMedicineData() {
+  const medicines = await Medicine
+    .find()
+    .lean();
+
+  return medicines.map(medicine => ({
+    name: medicine.name,
+    minTemp: medicine.minTemp,
+    maxTemp: medicine.maxTemp,
+    humidityRange: medicine.humidityRange
+  }));
+}
+
+
+// -----------------------------------
+// Get maintenance information
+// -----------------------------------
+
+async function getAssistantMaintenanceData() {
+  const maintenance = await Maintenance
+    .find()
+    .sort({ deviceId: 1 })
+    .lean();
+
+  return maintenance.map(record => ({
+    deviceId: record.deviceId,
+    manufacturingDate: record.manufacturingDate,
+    activationDate: record.activationDate,
+    warrantyExpiry: record.warrantyExpiry,
+    totalServicesRequired:
+      record.totalServicesRequired,
+    nextServiceDate:
+      record.nextServiceDate,
+
+    services: record.services || []
+  }));
+}
+
+
+// -----------------------------------
+// Get ML prediction information
+// -----------------------------------
+
+function getAssistantPredictionData() {
+  try {
+    const filePath = path.join(
+      __dirname,
+      "..",
+      "ml_predictions.json"
+    );
+
+    const data = fs.readFileSync(
+      filePath,
+      "utf8"
+    );
+
+    return JSON.parse(data);
+
+  } catch (error) {
+    console.log(
+      "AI prediction context error:",
+      error.message
+    );
+
+    return null;
+  }
+}
+
+// ===================================
+// Build AI Context
+// ===================================
+
+async function buildAssistantContext(message) {
+  const lowerMessage = message.toLowerCase();
+
+  const context = {
+    system: {
+      project:
+        "IoT-Based Cold Supply Chain Monitoring System",
+
+      description:
+        "A cold-chain monitoring platform for medicine storage and transportation.",
+
+      temperatureRange:
+        "The dashboard uses 2°C to 8°C as the cold-chain temperature range.",
+
+      liveHardwareDevice:
+        LIVE_DEVICE_ID || "Not configured",
+
+      importantDataRule:
+        "Only the configured LIVE_DEVICE_ID represents the physical hardware device. Other device data is demonstration data."
+    }
+  };
+
+
+  // ---------------------------------
+  // Sensor information
+  // ---------------------------------
+
+  const sensorData =
+    await getAssistantSensorData(message);
+
+  if (sensorData) {
+    context.sensorData = sensorData;
+  }
+
+
+  // ---------------------------------
+  // Box information
+  // ---------------------------------
+
+  const asksAboutBoxes = [
+    "box",
+    "boxes",
+    "container",
+    "storage"
+  ].some(keyword =>
+    lowerMessage.includes(keyword)
+  );
+
+  if (asksAboutBoxes) {
+    context.boxes =
+      await getAssistantBoxData();
+  }
+
+
+  // ---------------------------------
+  // Maintenance information
+  // ---------------------------------
+
+  const asksAboutMaintenance = [
+    "maintenance",
+    "maintain",
+    "service",
+    "serviced",
+    "technician",
+    "warranty",
+    "repair"
+  ].some(keyword =>
+    lowerMessage.includes(keyword)
+  );
+
+  if (asksAboutMaintenance) {
+    context.maintenance =
+      await getAssistantMaintenanceData();
+  }
+
+
+  // ---------------------------------
+  // Medicine information
+  // ---------------------------------
+
+  const asksAboutMedicine = [
+    "medicine",
+    "medicines",
+    "vaccine",
+    "vaccines",
+    "insulin",
+    "plasma",
+    "inventory",
+    "drug"
+  ].some(keyword =>
+    lowerMessage.includes(keyword)
+  );
+
+  if (asksAboutMedicine) {
+    context.medicines =
+      await getAssistantMedicineData();
+  }
+
+
+  // ---------------------------------
+  // Prediction information
+  // ---------------------------------
+
+  const asksAboutPrediction = [
+    "prediction",
+    "predict",
+    "forecast",
+    "future temperature",
+    "30 minute",
+    "30 minutes",
+    "overheat",
+    "overheating"
+  ].some(keyword =>
+    lowerMessage.includes(keyword)
+  );
+
+  if (asksAboutPrediction) {
+    context.predictions =
+      getAssistantPredictionData();
+  }
+
+
+  // ---------------------------------
+  // Alert information
+  // ---------------------------------
+
+  const asksAboutAlerts = [
+    "alert",
+    "alerts",
+    "warning",
+    "warnings",
+    "alarm",
+    "alarms"
+  ].some(keyword =>
+    lowerMessage.includes(keyword)
+  );
+
+  if (asksAboutAlerts) {
+    const alerts = await SensorData
+      .find({
+        majorChange: true
+      })
+      .sort({
+        createdAt: -1
+      })
+      .limit(20)
+      .lean();
+
+    context.alerts = alerts.map(alert => ({
+      deviceId: alert.deviceId,
+      boxName: alert.boxName,
+      location: alert.location,
+      temperature: alert.temperature,
+      humidity: alert.humidity,
+      alert: alert.alert,
+      majorChange: alert.majorChange,
+      createdAt: alert.createdAt,
+      dataSource: getDataSource(
+        alert.deviceId
+      )
+    }));
+  }
+
+
+  return context;
+}
 
 // ===================================
 // 4️⃣ Routes
@@ -409,6 +828,352 @@ app.delete("/api/maintenance/:deviceId", async (req, res) => {
   }
 });
 
+function cleanAssistantResponse(text) {
+  if (!text) {
+    return "";
+  }
+
+  let cleaned = text;
+
+  // Remove Markdown headings
+  cleaned = cleaned.replace(/^\s*#{1,6}\s*/gm, "");
+
+  // Remove bold and italic markers
+  cleaned = cleaned.replace(/\*\*/g, "");
+  cleaned = cleaned.replace(/__/g, "");
+  cleaned = cleaned.replace(/\*/g, "");
+  cleaned = cleaned.replace(/_/g, "");
+
+  // Remove inline code markers
+  cleaned = cleaned.replace(/`/g, "");
+
+  // Remove Markdown horizontal lines
+  cleaned = cleaned.replace(/^\s*[-*_]{3,}\s*$/gm, "");
+
+  // Convert Markdown bullets to normal bullets
+  cleaned = cleaned.replace(/^\s*[-*+]\s+/gm, "• ");
+
+  // Remove numbered Markdown formatting if desired
+  cleaned = cleaned.replace(/^\s*\d+\.\s+/gm, "• ");
+
+  // Remove excessive blank lines
+  cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
+
+  // Remove spaces before punctuation
+  cleaned = cleaned.replace(/\s+([,.!?])/g, "$1");
+
+  return cleaned.trim();
+}
+
+// ===================================
+// Gemini AI Assistant
+// ===================================
+
+app.post(
+  "/api/assistant/chat",
+  async (req, res) => {
+
+    try {
+
+      const {
+        message,
+        role
+      } = req.body;
+
+
+      // ---------------------------------
+      // Validate message
+      // ---------------------------------
+
+      if (
+        !message ||
+        typeof message !== "string"
+      ) {
+        return res.status(400).json({
+          message:
+            "A valid message is required."
+        });
+      }
+
+
+      console.log(
+        "🤖 AI Question:",
+        message
+      );
+
+
+      // ---------------------------------
+      // Build platform context
+      // ---------------------------------
+
+      const platformContext =
+        await buildAssistantContext(
+          message.trim()
+        );
+
+
+      console.log(
+        "📊 AI Context prepared"
+      );
+
+
+      // ---------------------------------
+      // Gemini
+      // ---------------------------------
+
+      const ai =
+        await getGeminiClient();
+
+
+      const systemInstruction = `
+You are Cold Chain AI, the intelligent
+operations assistant for an IoT-Based
+Cold Supply Chain Monitoring System.
+
+================================================
+PLATFORM
+================================================
+
+The website monitors medicine storage and
+transportation conditions.
+
+Main website features include:
+
+- Dashboard
+- Temperature monitoring
+- Humidity monitoring
+- Cold-storage boxes
+- Sensor readings
+- Alerts
+- Temperature history
+- ML temperature prediction
+- Maintenance management
+- Medicine information
+- Inventory
+- Box locations
+- Feedback
+
+================================================
+DATA SOURCES
+================================================
+
+The backend provides structured platform
+data to you in the CONTEXT section.
+
+MongoDB contains:
+
+- Sensor readings
+- Box information
+- Medicine information
+- Maintenance records
+
+The system also has ML prediction information.
+
+================================================
+LIVE VS DEMONSTRATION DATA
+================================================
+
+There is currently only ONE physical IoT
+hardware device.
+
+LIVE HARDWARE DEVICE:
+${LIVE_DEVICE_ID || "Not configured"}
+
+Only readings belonging to that device should
+be described as LIVE HARDWARE DATA.
+
+All other box readings should be described as
+DEMONSTRATION DATA.
+
+NEVER describe demonstration data as live
+hardware data.
+
+================================================
+DATA ACCURACY
+================================================
+
+This is extremely important.
+
+When answering questions about the platform:
+
+- Use the supplied CONTEXT.
+- Do not invent sensor readings.
+- Do not invent maintenance records.
+- Do not invent inventory information.
+- Do not invent prediction results.
+- Do not claim that you accessed MongoDB directly.
+- If the requested information is not present
+  in CONTEXT, clearly say that the information
+  is currently unavailable.
+- Do not make up a device's status.
+
+================================================
+TEMPERATURE
+================================================
+
+The dashboard uses:
+
+2°C - 8°C
+
+as the cold-chain temperature range.
+
+When discussing temperature, use the actual
+reading supplied in CONTEXT.
+
+================================================
+LANGUAGE
+================================================
+
+Support:
+
+English
+Hindi
+Hinglish
+
+English question:
+Respond in English.
+
+Hindi question:
+Respond in Hindi.
+
+Hinglish question:
+Respond naturally in Hinglish.
+
+Do not unnecessarily translate technical
+device IDs, medicine names, or numerical values.
+
+================================================
+USER ROLE
+================================================
+
+The user's role is:
+
+${role || "Unknown"}
+
+Consider the role when explaining operational
+information, but do not hide relevant platform
+information unless the application explicitly
+requires it.
+
+================================================
+RESPONSE STYLE
+================================================
+
+Answer clearly, naturally, and concisely.
+
+IMPORTANT:
+- Return PLAIN TEXT ONLY.
+- Do NOT use Markdown.
+- Do NOT use # headings.
+- Do NOT use ## headings.
+- Do NOT use ### headings.
+- Do NOT use **bold**.
+- Do NOT use *italics*.
+- Do NOT use --- separators.
+- Do NOT use Markdown tables.
+- Do NOT use backticks.
+- Do NOT use Markdown links.
+
+Use simple numbered lists or bullet points when useful.
+
+For example, use:
+
+Active alerts:
+
+1. BOX-LKO-01 - Vaccine Freezer #1
+   Temperature: 27.5°C
+   Humidity: 61.3%
+   Source: Live hardware data
+
+Do NOT write:
+
+### Active Alerts
+
+**BOX-LKO-01**
+
+**Temperature:** 27.5°C
+
+Keep normal answers between 50 and 150 words unless the user specifically asks for more detail.
+
+For operational questions:
+1. Give the relevant data.
+2. Explain what it means.
+3. Give a practical next step when appropriate.
+
+Do not unnecessarily mention that you are an AI.
+
+${JSON.stringify(
+  platformContext,
+  null,
+  2
+)}
+`;
+
+
+      // ---------------------------------
+      // Generate Gemini response
+      // ---------------------------------
+
+      const response =
+        await ai.models.generateContent({
+
+          model: "gemini-3.6-flash",
+
+          contents:
+            message.trim(),
+
+          config: {
+
+            systemInstruction,
+
+            temperature: 0.2,
+
+            maxOutputTokens: 400
+
+          }
+
+        });
+
+
+     const answer =
+  cleanAssistantResponse(response.text);
+
+
+      if (!answer) {
+
+        return res.status(502).json({
+          message:
+            "Gemini did not return a response."
+        });
+
+      }
+
+
+      // ---------------------------------
+      // Return answer
+      // ---------------------------------
+
+      res.json({
+        answer
+      });
+
+
+    } catch (error) {
+
+      console.error(
+        "❌ Gemini Assistant Error:",
+        error
+      );
+
+      res.status(500).json({
+        message:
+          "Failed to generate assistant response."
+      });
+
+    }
+
+  }
+);
 // ===================================
 // 5️⃣ Start Server
 // ===================================

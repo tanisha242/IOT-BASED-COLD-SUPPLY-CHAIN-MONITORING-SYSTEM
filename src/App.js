@@ -21,7 +21,7 @@ import MedicalInventory from "./pages/MedicalInventory";
 import Feedback from "./pages/Feedback";
 import QCFeedback from "./pages/QCFeedback";
 import Maintenance from "./pages/Maintenance";
-
+import AIAssistant from "./components/AIAssistant/AIAssistant";
 
 function Layout() {
   const location = useLocation();
@@ -68,6 +68,7 @@ export default function App() {
   return (
     <Router>
       <Layout />
+      <AIAssistant />
     </Router>
   );
 }
